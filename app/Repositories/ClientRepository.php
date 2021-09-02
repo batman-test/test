@@ -42,7 +42,7 @@ class ClientRepository implements ClientRepositoryInterface
             ],
             [
                 'start_validity' => $startValidity,
-                'end_validity' => $startValidity->addDays(15),
+                'end_validity' => (clone $startValidity)->addDays(15),
                 'status' => Status::ACTIVE,
                 'latitude' => Arr::get($coordinate, 'lat'),
                 'longitude' => Arr::get($coordinate, 'lng'),
@@ -52,8 +52,44 @@ class ClientRepository implements ClientRepositoryInterface
 
     public function index(IndexClientModel $model): Paginator
     {
-        return $this
-            ->query()
+        $query = $this->query();
+
+        $whereLike = array_filter(
+            [
+                'name' => $model->getName(),
+                'address1' => $model->getAddress1(),
+                'address2' => $model->getAddress2(),
+                'city' => $model->getCity(),
+                'state' => $model->getState(),
+                'country' => $model->getCountry(),
+                'zip' => $model->getZipCode(),
+                'phone_no1' => $model->getPhoneNo1(),
+                'phone_no2' => $model->getPhoneNo2(),
+                'id' => $model->getId(),
+                'latitude' => $model->getLatitude(),
+                'longitude' => $model->getLongitude(),
+                'status' => $model->getStatus(),
+            ]
+        );
+
+        $whereDate = array_filter(
+            [
+                'start_validity' => $model->getStartValidity(),
+                'end_validity' => $model->getEndValidity(),
+                'created_at' => $model->getCreatedAt(),
+                'updated_at' => $model->getUpdateAt(),
+            ]
+        );
+
+        foreach ($whereLike as $field => $value) {
+            $query->where($field, 'LIKE', sprintf('%%%s%%', $value));
+        }
+
+        foreach ($whereDate as $field => $value) {
+            $query->whereDate($field, $value);
+        }
+
+        return $query
             ->orderBy(Arr::get(static::FIELD_ALIAS, $model->getSort(), $model->getSort()), $model->getOrder())
             ->paginate();
     }
